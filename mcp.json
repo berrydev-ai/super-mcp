@@ -1,0 +1,94 @@
+{
+  "name": "s3-super-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for S3 data analytics using super library",
+  "main": "src/mcp_server.py",
+  "type": "stdio",
+  "capabilities": {
+    "tools": [
+      {
+        "name": "query_s3_data",
+        "description": "Execute natural language queries against S3 data using super library",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "string",
+              "description": "Natural language business question"
+            },
+            "s3_path": {
+              "type": "string", 
+              "description": "S3 URL (s3://bucket/path/*)"
+            },
+            "limit": {
+              "type": "integer",
+              "default": 100,
+              "description": "Maximum number of results to return"
+            }
+          },
+          "required": ["request", "s3_path"]
+        }
+      },
+      {
+        "name": "explore_s3_data",
+        "description": "Discover data structure and schema for query building",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "s3_path": {
+              "type": "string",
+              "description": "S3 URL to analyze"
+            },
+            "sample_size": {
+              "type": "integer",
+              "default": 100,
+              "description": "Number of records to sample for analysis"
+            }
+          },
+          "required": ["s3_path"]
+        }
+      },
+      {
+        "name": "list_s3_files",
+        "description": "Browse available data sources in S3",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "bucket": {
+              "type": "string",
+              "description": "S3 bucket name"
+            },
+            "prefix": {
+              "type": "string",
+              "description": "Optional path prefix filter"
+            }
+          },
+          "required": ["bucket"]
+        }
+      }
+    ]
+  },
+  "runtime": {
+    "python": ">=3.11"
+  },
+  "deployment": {
+    "aws_lambda": {
+      "runtime": "python3.11",
+      "handler": "mcp_server.lambda_handler",
+      "timeout": 300,
+      "memory": 1024,
+      "layers": ["super-binary-layer"]
+    }
+  },
+  "environment": {
+    "required": [
+      "AWS_REGION"
+    ],
+    "optional": [
+      "SUPER_BINARY_PATH",
+      "LOG_LEVEL",
+      "QUERY_TIMEOUT", 
+      "MAX_RESULTS"
+    ]
+  }
+}

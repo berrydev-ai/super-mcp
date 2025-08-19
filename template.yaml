@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  S3 Super MCP Server
+  
+  FastMCP server for S3 data analytics using super library
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+    Description: Deployment stage
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 1024
+    Runtime: python3.11
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        SUPER_BINARY_PATH: /opt/bin/super
+        AWS_REGION: !Ref AWS::Region
+        QUERY_TIMEOUT: 300
+        MAX_RESULTS: 10000
+
+Resources:
+  # Lambda Layer containing super binary
+  SuperBinaryLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${AWS::StackName}-super-binary"
+      Description: Super binary for data analytics
+      ContentUri: layers/super/
+      CompatibleRuntimes:
+        - python3.11
+      CompatibleArchitectures:
+        - x86_64
+    Metadata:
+      BuildMethod: makefile
+
+  # Main MCP Server Function
+  MCPServerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-mcp-server"
+      CodeUri: src/
+      Handler: mcp_server.lambda_handler
+      Description: S3 Super MCP Server for data analytics
+      Architectures:
+        - x86_64
+      Layers:
+        - !Ref SuperBinaryLayer
+      Policies:
+        - S3ReadPolicy:
+            BucketName: "*"
+        - Statement:
+            - Sid: S3ListAccess
+              Effect: Allow
+              Action:
+                - s3:ListBucket
+                - s3:ListObjects
+                - s3:ListObjectsV2
+              Resource: "*"
+            - Sid: CloudWatchLogs
+              Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        MCPApi:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+  # Function URL for direct MCP client access
+  MCPServerFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref MCPServerFunction
+      AuthType: NONE
+      Cors:
+        AllowCredentials: false
+        AllowHeaders:
+          - "*"
+        AllowMethods:
+          - "*"
+        AllowOrigins:
+          - "*"
+
+  # CloudWatch Log Group
+  MCPServerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${MCPServerFunction}"
+      RetentionInDays: 14
+
+Outputs:
+  MCPServerApi:
+    Description: "API Gateway endpoint URL for MCP Server"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-api-url"
+
+  MCPServerFunctionUrl:
+    Description: "Lambda Function URL for direct MCP client access"
+    Value: !GetAtt MCPServerFunctionUrl.FunctionUrl
+    Export:
+      Name: !Sub "${AWS::StackName}-function-url"
+
+  MCPServerFunction:
+    Description: "MCP Server Lambda Function ARN"
+    Value: !GetAtt MCPServerFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-function-arn"
+
+  SuperBinaryLayer:
+    Description: "Super Binary Lambda Layer ARN"
+    Value: !Ref SuperBinaryLayer
+    Export:
+      Name: !Sub "${AWS::StackName}-super-layer-arn"
