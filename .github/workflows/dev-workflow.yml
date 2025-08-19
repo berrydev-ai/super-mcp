@@ -1,0 +1,60 @@
+name: Development Workflow
+
+on:
+  push:
+    branches: [ main, develop, "claude-code/*" ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || echo "No requirements.txt"
+          pip install -r requirements-dev.txt || echo "No requirements-dev.txt"
+
+      - name: Install Super library
+        run: |
+          cd /tmp
+          wget -q https://github.com/brimdata/super/releases/latest/download/super-linux-amd64.tar.gz
+          tar -xzf super-linux-amd64.tar.gz
+          sudo mv super-linux-amd64/super /usr/local/bin/
+          sudo chmod +x /usr/local/bin/super
+
+      - name: Run tests
+        run: |
+          if [ -d "tests" ]; then
+            python -m pytest tests/ -v --cov=src --cov-report=xml
+          else
+            echo "No tests directory found"
+          fi
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        if: success()
+
+  validate-sam:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up SAM
+        uses: aws-actions/setup-sam@v2
+
+      - name: Validate SAM template
+        run: |
+          if [ -f "template.yaml" ]; then
+            sam validate
+          else
+            echo "No SAM template found"
+          fi
