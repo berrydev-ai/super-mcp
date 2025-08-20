@@ -1,48 +1,29 @@
 {
-    "name": "S3 Super MCP Server Development",
-    "build": {
-        "dockerfile": "../Dockerfile",
-        "target": "builder",
-        "context": ".."
-    },
-    "features": {
-        "ghcr.io/devcontainers/features/aws-cli:1": {},
-        "ghcr.io/devcontainers/features/github-cli:1": {}
-    },
+    "name": "S3 Super MCP Server",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "dev",
+    "workspaceFolder": "/app",
+    "remoteUser": "mcpuser",
+    "postCreateCommand": "bash /app/.devcontainer/setup.sh",
     "customizations": {
         "vscode": {
             "extensions": [
                 "ms-python.python",
+                "ms-python.pylint",
                 "ms-python.black-formatter",
                 "ms-python.isort",
-                "ms-vscode.vscode-json",
-                "redhat.vscode-yaml",
                 "amazonwebservices.aws-toolkit-vscode"
-            ],
-            "settings": {
-                "python.defaultInterpreterPath": "/usr/local/bin/python",
-                "python.formatting.provider": "black",
-                "python.linting.enabled": true,
-                "python.linting.pylintEnabled": true,
-                "editor.formatOnSave": true,
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": true
-                }
-            }
+            ]
         }
     },
-    "postCreateCommand": "bash .devcontainer/setup.sh",
-    "forwardPorts": [8080, 3000],
-    "portsAttributes": {
-        "8080": {
-            "label": "MCP Server (Development)",
-            "onAutoForward": "notify"
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "installOhMyZsh": true,
+            "upgradePackages": true,
+            "username": "mcpuser",
+            "userUid": "1000",
+            "userGid": "1000"
         }
-    },
-    "remoteUser": "root",
-    "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-    "workspaceFolder": "/app",
-    "mounts": [
-        "source=${localEnv:HOME}/.aws,target=/root/.aws,type=bind,consistency=cached"
-    ]
+    }
 }

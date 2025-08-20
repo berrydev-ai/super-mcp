@@ -2,6 +2,72 @@
 # .devcontainer/setup.sh
 set -e
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}Setting up dev container user and permissions...${NC}"
+
+# Create mcpuser if it doesn't exist
+if ! id "mcpuser" &>/dev/null; then
+    echo -e "${YELLOW}Creating mcpuser...${NC}"
+    useradd -m -s /bin/bash -u 1000 mcpuser
+else
+    echo -e "${GREEN}mcpuser already exists${NC}"
+fi
+
+# Add mcpuser to sudo group
+echo -e "${YELLOW}Adding mcpuser to sudo group...${NC}"
+usermod -aG sudo mcpuser
+
+# Allow mcpuser to use sudo without password
+echo -e "${YELLOW}Configuring passwordless sudo for mcpuser...${NC}"
+echo "mcpuser ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/mcpuser
+chmod 440 /etc/sudoers.d/mcpuser
+
+# Set proper ownership of home directory
+echo -e "${YELLOW}Setting up home directory permissions...${NC}"
+chown -R mcpuser:mcpuser /home/mcpuser
+
+# Set proper ownership of workspace
+echo -e "${YELLOW}Setting up workspace permissions...${NC}"
+chown -R mcpuser:mcpuser /app
+
+# Create .aws directory with proper permissions if it doesn't exist
+if [ ! -d "/home/mcpuser/.aws" ]; then
+    echo -e "${YELLOW}Creating .aws directory...${NC}"
+    mkdir -p /home/mcpuser/.aws
+    chown mcpuser:mcpuser /home/mcpuser/.aws
+    chmod 700 /home/mcpuser/.aws
+fi
+
+# Install additional development tools as mcpuser
+echo -e "${YELLOW}Installing additional development tools...${NC}"
+sudo -u mcpuser bash << 'EOF'
+# Install Python development tools
+pip install --user --upgrade pip setuptools wheel
+pip install --user pytest pytest-cov black isort mypy
+
+# Set up shell aliases
+echo "alias ll='ls -alF'" >> /home/mcpuser/.bashrc
+echo "alias la='ls -A'" >> /home/mcpuser/.bashrc
+echo "alias l='ls -CF'" >> /home/mcpuser/.bashrc
+echo "alias ..='cd ..'" >> /home/mcpuser/.bashrc
+echo "alias ...='cd ../..'" >> /home/mcpuser/.bashrc
+echo "alias vba='.venv/bin/activate'" >> /home/mcpuser/.bashrc
+echo "alias pir='pip install -r requirements.txt'" >> /home/mcpuser/.bashrc
+echo "alias pird='pip install -r requirements-dev.txt'" >> /home/mcpuser/.bashrc
+
+# Add local bin to PATH
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/mcpuser/.bashrc
+EOF
+
+echo -e "${GREEN}Dev container setup complete!${NC}"
+echo -e "${GREEN}User 'mcpuser' has been created with sudo privileges${NC}"
+echo -e "${YELLOW}You can now use 'sudo' commands without a password${NC}"
+
 echo "🚀 Setting up S3 Super MCP Server DEVELOPMENT environment..."
 echo "ℹ️  Note: Super is installed here for server development/testing"
 echo "ℹ️  In production, super runs on server infrastructure (Lambda/containers)"
