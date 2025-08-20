@@ -9,30 +9,38 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
+      - name: Build and test in container
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || echo "No requirements.txt"
-          pip install -r requirements-dev.txt || echo "No requirements-dev.txt"
-
-      - name: Install Super library
-        run: |
+          echo "Setting up containerized environment..."
+          
+          # Install system dependencies
+          apt-get update
+          apt-get install -y curl wget build-essential
+          
+          # Install Super library
           cd /tmp
-          wget -q https://github.com/brimdata/super/releases/latest/download/super-linux-amd64.tar.gz
+          echo "Downloading Super library..."
+          wget -v https://github.com/brimdata/super/releases/latest/download/super-linux-amd64.tar.gz
+          echo "Extracting Super library..."
           tar -xzf super-linux-amd64.tar.gz
-          sudo mv super-linux-amd64/super /usr/local/bin/
-          sudo chmod +x /usr/local/bin/super
-
-      - name: Run tests
-        run: |
+          echo "Installing Super library..."
+          mv super-linux-amd64/super /usr/local/bin/
+          chmod +x /usr/local/bin/super
+          echo "Verifying Super installation..."
+          super --version
+          
+          # Install Python dependencies
+          cd $GITHUB_WORKSPACE
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          
+          # Run tests
           if [ -d "tests" ]; then
             python -m pytest tests/ -v --cov=src --cov-report=xml
           else
@@ -45,16 +53,18 @@ jobs:
 
   validate-sam:
     runs-on: ubuntu-latest
+    container:
+      image: public.ecr.aws/sam/build-python3.11:latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up SAM
-        uses: aws-actions/setup-sam@v2
 
       - name: Validate SAM template
+        env:
+          AWS_DEFAULT_REGION: us-east-1
+          SAM_CLI_TELEMETRY: 0
         run: |
           if [ -f "template.yaml" ]; then
-            sam validate
+            sam validate --region us-east-1
           else
             echo "No SAM template found"
           fi
