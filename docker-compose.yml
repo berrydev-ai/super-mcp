@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    container_name: super-mcp-server
+    ports:
+      - "8080:8080"
+    environment:
+      - SUPER_BINARY_PATH=/usr/local/bin/super
+      - AWS_DEFAULT_REGION=us-east-1
+      - LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app
+    volumes:
+      # Mount AWS credentials if available
+      - ~/.aws:/home/mcpuser/.aws:ro
+      # Mount source code for development
+      - ./src:/app/src:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import subprocess; subprocess.run(['/usr/local/bin/super', '--version'], check=True)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Development container with additional tools
+  dev:
+    build: 
+      context: .
+      target: builder
+    container_name: super-mcp-dev
+    ports:
+      - "8080:8080"
+      - "3000:3000"  # Additional dev port
+    environment:
+      - SUPER_BINARY_PATH=/usr/local/bin/super
+      - AWS_DEFAULT_REGION=us-east-1
+      - LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app
+    volumes:
+      - ~/.aws:/home/mcpuser/.aws:ro
+      - .:/app
+    working_dir: /app
+    command: tail -f /dev/null  # Keep container running for development
+    profiles:
+      - dev

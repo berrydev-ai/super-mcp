@@ -1,6 +1,10 @@
 {
     "name": "S3 Super MCP Server Development",
-    "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "target": "builder",
+        "context": ".."
+    },
     "features": {
         "ghcr.io/devcontainers/features/aws-cli:1": {},
         "ghcr.io/devcontainers/features/docker-in-docker:2": {},
@@ -36,5 +40,10 @@
             "onAutoForward": "notify"
         }
     },
-    "remoteUser": "vscode"
+    "remoteUser": "root",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
+    "workspaceFolder": "/app",
+    "mounts": [
+        "source=${localEnv:HOME}/.aws,target=/root/.aws,type=bind,consistency=cached"
+    ]
 }
